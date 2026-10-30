@@ -1,0 +1,918 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0e1116">
+<meta name="description" content="식품 이름만 치면 칼로리와 탄단지가 바로 나오는 개인용 식단 사전">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="칼로리 사전">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A5%97%3C/text%3E%3C/svg%3E">
+<title>칼로리 사전 · 탄단지 즉시 검색</title>
+<style>
+:root{
+  --bg:#0e1116; --panel:#161b22; --panel2:#1b222b; --line:#2a3340;
+  --txt:#e6edf3; --dim:#8b98a8; --accent:#4ade80;
+  --carb:#38bdf8; --prot:#a78bfa; --fat:#fbbf24;
+  --r:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  margin:0;background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic","맑은 고딕",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;line-height:1.45;
+}
+button{font:inherit;color:inherit;cursor:pointer}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px 140px}
+
+/* header */
+header{position:sticky;top:0;z-index:30;background:rgba(14,17,22,.82);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid transparent;transition:border-color .2s}
+header.stuck{border-bottom-color:var(--line)}
+.hd{padding:14px 0 12px}
+.brand{display:flex;align-items:baseline;gap:8px;margin-bottom:10px}
+.brand h1{font-size:16px;font-weight:800;margin:0;letter-spacing:-.2px}
+.brand span{font-size:12px;color:var(--dim)}
+.search{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px;transition:border-color .15s,box-shadow .15s}
+.search:focus-within{border-color:rgba(74,222,128,.6);box-shadow:0 0 0 3px rgba(74,222,128,.12)}
+.search .ico{font-size:17px;opacity:.55}
+#q{flex:1;min-width:0;background:none;border:0;outline:0;color:inherit;font-size:19px;font-weight:700;letter-spacing:-.3px}
+#q::placeholder{color:#5d6b7d;font-weight:600}
+#clear{border:0;background:#242c36;color:var(--dim);width:26px;height:26px;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:12px}
+#clear.on{display:flex}
+.hint{font-size:12px;color:var(--dim);margin-top:8px;padding-left:2px}
+.hint b{color:var(--accent);font-weight:700}
+
+/* layout */
+main{display:grid;gap:14px;grid-template-areas:"detail" "list";grid-template-columns:1fr;padding-top:14px}
+@media(min-width:880px){
+  main{grid-template-columns:minmax(0,1fr) 430px;grid-template-areas:"list detail";align-items:start}
+  aside{position:sticky;top:132px}
+}
+@media(max-width:879px){
+  #detail:not(.has){display:none}
+}
+section.list{grid-area:list}
+aside{grid-area:detail;scroll-margin-top:126px}
+
+/* list */
+ul.rows{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--panel);border:1px solid transparent;border-radius:14px;padding:11px 14px;transition:background .12s,border-color .12s}
+.row:hover{background:var(--panel2)}
+.row.on{border-color:rgba(74,222,128,.55);background:rgba(74,222,128,.07)}
+.row .left{flex:1;min-width:0}
+.row .nm{display:block;font-size:16px;font-weight:700;letter-spacing:-.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .nm em{font-style:normal;color:var(--accent)}
+.row .meta{font-size:11.5px;color:var(--dim);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.row .meta .tag{background:#222a34;border-radius:5px;padding:1px 6px;font-size:10.5px}
+.kcal{text-align:right;white-space:nowrap;flex:none}
+.kcal b{font-size:19px;font-weight:800;letter-spacing:-.5px}
+.kcal i{font-style:normal;font-size:10.5px;color:var(--dim);margin-left:2px}
+
+/* detail */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:20px}
+.empty{color:var(--dim);font-size:13.5px;text-align:center;padding:26px 12px}
+.empty .big{font-size:30px;display:block;margin-bottom:8px;opacity:.7}
+.tagline{display:inline-block;font-size:11px;font-weight:700;color:var(--accent);background:rgba(74,222,128,.12);border-radius:6px;padding:2px 8px;margin-bottom:8px}
+h2.food{font-size:24px;margin:0 0 14px;letter-spacing:-.7px;font-weight:800;line-height:1.25}
+.servs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.serv{border:1px solid var(--line);background:#1b222b;border-radius:999px;padding:6px 12px;font-size:12.5px;font-weight:600;color:var(--dim)}
+.serv.on{background:rgba(74,222,128,.13);border-color:rgba(74,222,128,.45);color:var(--accent)}
+.hero{display:flex;align-items:flex-end;gap:10px;margin-bottom:4px}
+.hero .num{font-size:46px;font-weight:800;letter-spacing:-2px;line-height:1;color:var(--accent)}
+.hero .unit{font-size:14px;color:var(--dim);font-weight:700;padding-bottom:6px}
+.sub{font-size:12px;color:var(--dim);margin-bottom:18px}
+.mrows{display:flex;flex-direction:column;gap:11px}
+.mrow{display:grid;grid-template-columns:58px 52px 1fr 34px;align-items:center;gap:8px;font-size:12.5px}
+.mrow .lab{font-weight:700}
+.mrow .val{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.mrow .pct{text-align:right;color:var(--dim);font-size:11px;font-variant-numeric:tabular-nums}
+.track{height:7px;background:#232b35;border-radius:99px;overflow:hidden}
+.track i{display:block;height:100%;border-radius:99px;transition:width .25s ease}
+.per100{font-size:11.5px;color:var(--dim);margin-top:16px;padding-top:14px;border-top:1px dashed var(--line);font-variant-numeric:tabular-nums}
+.tip{font-size:11.5px;color:#9fb0c2;background:#1b222b;border:1px solid #232c37;border-radius:10px;padding:8px 11px;margin-top:10px;line-height:1.55}
+.addbtn{width:100%;margin-top:16px;border:0;border-radius:12px;background:var(--accent);color:#062a12;font-weight:800;font-size:14px;padding:13px;letter-spacing:-.2px}
+.addbtn:active{transform:scale(.99)}
+
+/* today */
+.atb{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:40;border:1px solid var(--line);background:rgba(28,35,44,.95);backdrop-filter:blur(10px);border-radius:999px;padding:11px 20px;font-size:13px;font-weight:700;box-shadow:0 8px 28px rgba(0,0,0,.45);display:flex;align-items:center;gap:8px}
+.atb b{color:var(--accent);font-size:15px;font-variant-numeric:tabular-nums}
+.panel{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(72px + env(safe-area-inset-bottom));z-index:39;width:min(440px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,.55);max-height:60vh;overflow:auto}
+.panel h3{margin:0 0 10px;font-size:13px;color:var(--dim);font-weight:700;display:flex;justify-content:space-between;align-items:center}
+.panel h3 button{background:none;border:0;color:#7d8b9c;font-size:11.5px;text-decoration:underline}
+.plist{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.plist li{display:flex;justify-content:space-between;gap:8px;color:#c9d4df}
+.plist li span:last-child{font-variant-numeric:tabular-nums;color:var(--dim)}
+.tot{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;border-top:1px solid var(--line);padding-top:12px;text-align:center}
+.tot div b{display:block;font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+.tot div span{font-size:10.5px;color:var(--dim)}
+
+/* dialog */
+dialog{border:1px solid var(--line);background:var(--panel);color:var(--txt);border-radius:18px;padding:20px;width:min(380px,calc(100vw - 32px))}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog h3{margin:0 0 14px;font-size:16px}
+dialog label{display:block;font-size:11.5px;color:var(--dim);margin-bottom:4px}
+dialog input{width:100%;background:#0f141a;border:1px solid var(--line);border-radius:9px;color:inherit;padding:9px 11px;font-size:14px;outline:0;margin-bottom:10px}
+dialog input:focus{border-color:rgba(74,222,128,.6)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+dialog .act{display:flex;gap:8px;margin-top:6px}
+dialog .act button{flex:1;border-radius:10px;padding:11px;border:1px solid var(--line);background:#1b222b;font-weight:700;font-size:13px}
+dialog .act .ok{background:var(--accent);color:#062a12;border:0}
+footer{margin-top:26px;font-size:11.5px;color:#5f6c7d;line-height:1.7;text-align:center}
+footer button{background:none;border:0;color:#7d8b9c;text-decoration:underline;font-size:11.5px}
+.none{padding:34px 10px;text-align:center;color:var(--dim);font-size:13.5px}
+.none b{color:var(--txt)}
+</style>
+</head>
+<body>
+<header id="hd">
+  <div class="wrap hd">
+    <div class="brand">
+      <h1>🥗 칼로리 사전</h1>
+      <span>탄단지 즉시 검색</span>
+    </div>
+    <div class="search">
+      <span class="ico">🔍</span>
+      <input id="q" placeholder="두부, 닭가슴살, ㄷㅂ …" autocomplete="off" spellcheck="false" enterkeyhint="search">
+      <button id="clear" aria-label="지우기">✕</button>
+    </div>
+    <div class="hint" id="hint"></div>
+  </div>
+</header>
+
+<div class="wrap">
+<main>
+  <section class="list">
+    <ul class="rows" id="rows"></ul>
+  </section>
+  <aside>
+    <div id="detail"></div>
+  </aside>
+</main>
+
+<footer>
+  수치는 식약처·농촌진흥청 식품성분DB를 참고한 <b>100g 기준 근사치</b>예요.<br>
+  조리법·브랜드에 따라 달라지니 정확한 값은 제품 표기를 확인하세요.<br><br>
+  <button id="openAdd">+ 내 음식 직접 추가</button>
+</footer>
+</div>
+
+<button class="atb" id="atb">오늘 <b id="atbK">0</b> kcal</button>
+<div class="panel" id="panel" hidden></div>
+
+<dialog id="dlg">
+  <form method="dialog" id="addForm">
+    <h3>내 음식 추가 (100g 기준)</h3>
+    <label>이름</label>
+    <input id="fn" required placeholder="예) 어머니표 잡채">
+    <div class="grid2">
+      <div><label>칼로리</label><input id="fk" type="number" step="0.1" required placeholder="kcal"></div>
+      <div><label>탄수화물</label><input id="fc" type="number" step="0.1" required placeholder="g"></div>
+      <div><label>단백질</label><input id="fp" type="number" step="0.1" required placeholder="g"></div>
+      <div><label>지방</label><input id="ff" type="number" step="0.1" required placeholder="g"></div>
+    </div>
+    <div class="act">
+      <button type="button" id="cancelAdd">취소</button>
+      <button class="ok" type="submit" value="ok">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+/* =====================================================================
+   데이터 형식
+   [ 이름, 분류, kcal/100g, 탄수화물g, 단백질g, 지방g, [[1회분 라벨, g], ...] ]
+   ※ 모든 수치는 100g 기준 근사치(반올림). 조리법에 따라 달라집니다.
+   ===================================================================== */
+const RAW = [
+["흰쌀밥","밥·면",130,28.6,2.4,0.3,[["1공기",210]]],
+["현미밥","밥·면",145,30.5,2.8,0.8,[["1공기",210]]],
+["잡곡밥","밥·면",140,29,3.2,0.9,[["1공기",210]]],
+["보리밥","밥·면",130,27.5,3,0.5,[["1공기",210]]],
+["김치볶음밥","밥·면",180,30,4,4.5,[["1인분",250]]],
+["볶음밥","밥·면",190,28,5,6,[["1인분",250]]],
+["비빔밥","밥·면",150,24,5,4,[["1그릇",400]]],
+["카레라이스","밥·면",160,25,4,4.5,[["1그릇",400]]],
+["오트밀(건조)","밥·면",380,62,13,7,[["1회 40g",40]]],
+["라면(조리)","밥·면",110,15,2.5,4,[["1봉지",500]]],
+["우동(조리)","밥·면",95,17,2.5,1.2,[["1그릇",450]]],
+["파스타(조리)","밥·면",160,30,5.5,2,[["1인분",250]]],
+["스파게티(소스)","밥·면",170,25,6,5,[["1인분",300]]],
+["메밀국수(조리)","밥·면",130,26,4,0.6,[["1인분",250]]],
+["당면(조리)","밥·면",130,32,0.1,0.1,[["1인분",150]]],
+["쫄면","밥·면",150,30,4,1.5,[["1인분",300]]],
+["냉면(물)","밥·면",110,22,4,0.8,[["1그릇",550]]],
+["쌀국수","밥·면",120,24,4,1,[["1그릇",500]]],
+["떡국","밥·면",120,22,3,2,[["1그릇",400]]],
+["흰죽","밥·면",60,13,1.2,0.2,[["1그릇",300]]],
+["오므라이스","밥·면",180,26,6,6,[["1그릇",400]]],
+["새우볶음밥","밥·면",190,28,6,6,[["1인분",300]]],
+["전복죽","밥·면",70,13,3,1,[["1그릇",400]]],
+["야채죽","밥·면",50,9,1.5,0.7,[["1그릇",400]]],
+["닭죽","밥·면",70,12,4,1,[["1그릇",400]]],
+["칼국수","밥·면",110,20,4,1.2,[["1그릇",600]]],
+["수제비","밥·면",95,18,4,0.9,[["1그릇",600]]],
+["잔치국수","밥·면",90,17,3.5,0.8,[["1그릇",550]]],
+["비빔국수","밥·면",130,25,4,1.5,[["1그릇",400]]],
+["콩국수","밥·면",120,18,6,3,[["1그릇",600]]],
+["막국수","밥·면",110,22,3,1,[["1그릇",500]]],
+["짜장면","밥·면",115,18,4,3,[["1그릇",700]]],
+["간짜장","밥·면",125,19,4.5,4,[["1인분",600]]],
+["짜장밥","밥·면",140,24,4,3.5,[["1그릇",500]]],
+["짬뽕밥","밥·면",86,12,4,2,[["1그릇",700]]],
+
+["된장찌개","국·찌개",59,4,4,3,[["1그릇",300]]],
+["김치찌개","국·찌개",70,4,6.5,3.5,[["1그릇",350]]],
+["순두부찌개","국·찌개",55,3,5,2.8,[["1그릇",400]]],
+["부대찌개","국·찌개",90,6,6,5,[["1그릇",400]]],
+["청국장찌개","국·찌개",75,5,5,4,[["1그릇",300]]],
+["동태찌개","국·찌개",45,2,6,1.5,[["1그릇",400]]],
+["알탕","국·찌개",55,2,7,2,[["1그릇",400]]],
+["매운탕","국·찌개",40,2,5,1.2,[["1그릇",500]]],
+["닭볶음탕","국·찌개",120,6,10,6,[["1인분",400]]],
+["마라탕","국·찌개",110,8,5,6,[["1인분",400]]],
+["짬뽕","국·찌개",90,11,4.5,3.2,[["1그릇",700]]],
+["미역국","국·찌개",25,2,2,1.2,[["1그릇",300]]],
+["콩나물국","국·찌개",15,1.5,1.5,0.4,[["1그릇",300]]],
+["북엇국","국·찌개",30,1,4,1,[["1그릇",350]]],
+["계란국","국·찌개",25,1,2.5,1.2,[["1그릇",300]]],
+["소고기무국","국·찌개",35,2,3.5,1.5,[["1그릇",350]]],
+["홍합탕","국·찌개",20,1,3,0.4,[["1그릇",400]]],
+["육개장","국·찌개",60,4,5,2.5,[["1그릇",400]]],
+["갈비탕","국·찌개",68,2,6,4.2,[["1그릇",600]]],
+["설렁탕","국·찌개",55,1.5,5.5,3,[["1그릇",600]]],
+["곰탕","국·찌개",55,1.5,5,3.2,[["1그릇",600]]],
+["닭곰탕","국·찌개",50,1,5.5,2.8,[["1그릇",600]]],
+["삼계탕","국·찌개",100,6,8,4.5,[["1마리",900]]],
+["감자탕","국·찌개",90,5,7,4.5,[["1인분",700]]],
+["순댓국","국·찌개",78,7,7,3,[["1그릇",700]]],
+["돼지국밥","국·찌개",85,9,6,2.6,[["1그릇",700]]],
+["추어탕","국·찌개",55,2,6,2.5,[["1그릇",600]]],
+["만둣국","국·찌개",60,7,3,2,[["1그릇",500]]],
+["떡만둣국","국·찌개",75,10,3.5,2.2,[["1그릇",600]]],
+["된장국","국·찌개",40,3,3,1.5,[["1그릇",300]]],
+["김치국","국·찌개",25,2,2,0.8,[["1그릇",300]]],
+["어묵탕","국·찌개",55,5,5,2,[["1그릇",400]]],
+["시래기국","국·찌개",30,3,2,1,[["1그릇",300]]],
+["아욱국","국·찌개",25,2,2,1,[["1그릇",300]]],
+
+["계란찜","반찬",70,2,7,4,[["1인분",150]]],
+["계란말이","반찬",180,3,12,13,[["1인분",100]]],
+["잡채","반찬",150,22,4,5,[["1인분",150]]],
+["김치전","반찬",200,25,5,9,[["1장",80]]],
+["멸치볶음","반찬",250,20,25,7,[["1인분",30]]],
+["장조림","반찬",150,6,20,4,[["1인분",50]]],
+["어묵볶음","반찬",190,15,11,10,[["1인분",60]]],
+["콩자반","반찬",200,25,12,6,[["1인분",40]]],
+["오징어볶음","반찬",130,8,14,4,[["1인분",150]]],
+["낙지볶음","반찬",120,9,13,3,[["1인분",150]]],
+["골뱅이무침","반찬",110,10,12,2,[["1인분",150]]],
+["콩나물무침","반찬",40,3,2.5,1.5,[["1접시",50]]],
+["시금치나물","반찬",45,3,2.5,2.5,[["1접시",50]]],
+["도라지무침","반찬",90,15,2,2.5,[["1접시",50]]],
+["무생채","반찬",35,6,1,1,[["1접시",50]]],
+["오이무침","반찬",40,5,1,1.8,[["1접시",50]]],
+["감자조림","반찬",90,14,2,3,[["1접시",50]]],
+["두부조림","반찬",120,4,8,8,[["1인분",100]]],
+["진미채볶음","반찬",250,25,20,8,[["1인분",30]]],
+["계란장조림","반찬",150,3,13,9,[["1인분",50]]],
+["해물파전","반찬",200,22,6,10,[["1장",150]]],
+["감자전","반찬",190,25,3,9,[["1장",100]]],
+["동그랑땡","반찬",220,10,10,15,[["1개",30]]],
+
+["배추김치","김치",20,3.5,1.2,0.4,[["1접시",50]]],
+["깍두기","김치",25,5,1,0.3,[["1접시",50]]],
+["열무김치","김치",20,3,1.5,0.3,[["1접시",50]]],
+["총각김치","김치",22,3.5,1.3,0.3,[["1접시",50]]],
+["백김치","김치",12,2,0.8,0.1,[["1접시",50]]],
+["파김치","김치",35,5,2,0.6,[["1접시",40]]],
+["오이소박이","김치",25,4,1,0.3,[["1개",40]]],
+["갓김치","김치",30,4,2,0.5,[["1접시",50]]],
+["나박김치","김치",10,1.5,0.5,0.1,[["1접시",50]]],
+["섞박지","김치",25,4,1.5,0.3,[["1접시",50]]],
+["묵은지","김치",22,3,1.2,0.4,[["1접시",50]]],
+["겉절이","김치",25,4,1.2,0.3,[["1접시",50]]],
+["보쌈김치","김치",40,5,2,1.2,[["1접시",50]]],
+
+["식빵","빵·떡",265,49,8.5,3.5,[["1장",35]]],
+["통밀식빵","빵·떡",250,43,9,4,[["1장",35]]],
+["바게트","빵·떡",280,55,9,1.5,[["1조각",50]]],
+["크루아상","빵·떡",400,45,8,21,[["1개",60]]],
+["베이글","빵·떡",270,53,10,1.5,[["1개",100]]],
+["도넛","빵·떡",400,50,5,20,[["1개",60]]],
+["카스텔라","빵·떡",350,55,6,12,[["1개",50]]],
+["떡볶이떡","빵·떡",230,51,4,0.5,[["1인분",150]]],
+["가래떡","빵·떡",200,45,3.5,0.4,[["1개",30]]],
+["찹쌀떡","빵·떡",230,50,4,0.5,[["1개",50]]],
+["인절미","빵·떡",220,48,4,0.8,[["1개",40]]],
+["붕어빵","빵·떡",250,45,5,5,[["1개",80]]],
+["호떡","빵·떡",300,50,5,9,[["1개",80]]],
+["크래커","빵·떡",450,70,8,15,[["1봉",30]]],
+
+["닭가슴살(삶은)","고기",165,0,31,3.6,[["1조각",100]]],
+["닭가슴살(생)","고기",110,0,23,1.5,[["1조각",100]]],
+["닭다리살(구운)","고기",210,0,26,11,[["1개",100]]],
+["닭안심","고기",120,0,24,2,[["1개",40]]],
+["닭날개(구운)","고기",250,0,27,15,[["1개",40]]],
+["닭발","고기",190,2,20,11,[["1인분",150]]],
+["소고기 등심(구운)","고기",250,0,27,15,[["1인분",150]]],
+["소고기 안심(구운)","고기",220,0,26,12,[["1인분",150]]],
+["소고기 양지(삶은)","고기",230,0,26,13,[["1인분",150]]],
+["소고기 갈비(구운)","고기",320,0,25,24,[["1인분",150]]],
+["소고기 다짐육","고기",250,0,20,18,[["1인분",100]]],
+["돼지 삼겹살(구운)","고기",330,0,22,26,[["1인분",150]]],
+["돼지 목살(구운)","고기",280,0,24,20,[["1인분",150]]],
+["돼지 안심","고기",145,0,24,5,[["1인분",150]]],
+["돼지 앞다리","고기",220,0,22,14,[["1인분",150]]],
+["돼지 갈비(구운)","고기",300,0,23,22,[["1인분",150]]],
+["오리(구운)","고기",300,0,19,25,[["1인분",150]]],
+["양고기(구운)","고기",250,0,25,17,[["1인분",150]]],
+["족발","고기",260,3,25,16,[["1인분",200]]],
+["보쌈","고기",280,0,26,19,[["1인분",200]]],
+["햄(슬라이스)","고기",150,3,18,8,[["1장",20]]],
+["베이컨","고기",540,1,37,42,[["1장",10]]],
+["소시지","고기",300,5,13,25,[["1개",40]]],
+["스팸","고기",315,6,13,28,[["1조각",50]]],
+["제육볶음","고기",220,8,18,13,[["1인분",150]]],
+["불고기","고기",200,9,20,10,[["1인분",150]]],
+["갈비찜","고기",250,10,20,14,[["1인분",200]]],
+["찜닭","고기",160,8,15,8,[["1인분",300]]],
+["닭갈비","고기",180,9,16,9,[["1인분",250]]],
+["김치찜","고기",90,4,8,5,[["1인분",200]]],
+["두부김치","고기",120,5,8,7,[["1인분",200]]],
+["수육","고기",260,0,25,17,[["1인분",200]]],
+["편육","고기",200,2,22,11,[["1인분",100]]],
+
+["연어","생선·해산",200,0,20,13,[["1토막",100]]],
+["연어회","생선·해산",180,0,21,10,[["1인분",100]]],
+["참치캔(물)","생선·해산",110,0,24,1,[["1캔",100]]],
+["참치캔(기름)","생선·해산",190,0,25,10,[["1캔",100]]],
+["고등어(구운)","생선·해산",250,0,24,17,[["1토막",100]]],
+["갈치(구운)","생선·해산",160,0,22,8,[["1토막",100]]],
+["조기(구운)","생선·해산",160,0,22,7,[["1마리",100]]],
+["삼치(구운)","생선·해산",200,0,22,12,[["1토막",100]]],
+["새우(삶은)","생선·해산",100,0,20,1.5,[["1마리",10]]],
+["오징어","생선·해산",90,3,16,1.5,[["1마리",200]]],
+["광어회","생선·해산",100,0,21,1.5,[["1인분",100]]],
+["굴","생선·해산",80,5,9,2,[["1인분",100]]],
+["홍합","생선·해산",90,4,14,2,[["1인분",100]]],
+["꽃게","생선·해산",90,1,18,1.5,[["1마리",200]]],
+["명란젓","생선·해산",110,5,20,2,[["1인분",30]]],
+["어묵","생선·해산",130,12,10,4,[["1장",30]]],
+["구운김","생선·해산",180,40,30,3,[["1장",2],["1봉(5g)",5]]],
+["조미김","생선·해산",500,30,25,33,[["1장",2],["1봉(5g)",5]]],
+["갈치속젓","생선·해산",95,4,13,3,[["1젓가락",10]]],
+["간장게장","생선·해산",90,5,12,2,[["1인분",150]]],
+["양념게장","생선·해산",110,10,11,2.2,[["1인분",150]]],
+["간장새우장","생선·해산",110,6,15,2.5,[["1인분",100]]],
+["미역(마른)","생선·해산",180,30,12,1.5,[["1인분",5]]],
+["다시마(마른)","생선·해산",150,30,8,1,[["1장",5]]],
+
+["두부","콩·두부",84,2.2,8.5,4.8,[["1/2모",150],["1모",300]]],
+["부침용 두부","콩·두부",100,3,9.5,6,[["1/2모",150]]],
+["순두부","콩·두부",45,3,5,2,[["1봉",300]]],
+["두부부침","콩·두부",160,5,10,11,[["1인분",150]]],
+["콩나물","콩·두부",25,3,3,0.3,[["1인분",100]]],
+["검은콩(삶은)","콩·두부",130,20,9,3,[["1인분",100]]],
+["병아리콩(삶은)","콩·두부",164,27,9,2.6,[["1인분",100]]],
+["렌틸콩(삶은)","콩·두부",116,20,9,0.4,[["1인분",100]]],
+["템페","콩·두부",190,9,20,11,[["1인분",100]]],
+["두유","콩·두부",45,4,3,2,[["1팩",190]]],
+["프로틴파우더","콩·두부",380,8,75,6,[["1스쿱",30]]],
+
+["계란(삶은)","달걀·유제품",155,1.1,13,11,[["1개",50]]],
+["계란흰자","달걀·유제품",52,0.7,11,0.2,[["1개",33]]],
+["계란노른자","달걀·유제품",320,3.6,16,27,[["1개",17]]],
+["계란후라이","달걀·유제품",200,0.8,14,15,[["1개",50]]],
+["우유","달걀·유제품",60,4.8,3.2,3.3,[["1컵",200]]],
+["저지방우유","달걀·유제품",45,5,3.4,1.5,[["1컵",200]]],
+["그릭요거트(무지방)","달걀·유제품",60,3.5,10,0.5,[["1컵",150]]],
+["플레인요거트","달걀·유제품",80,5,4,4.5,[["1컵",100]]],
+["슬라이스치즈","달걀·유제품",300,3,20,24,[["1장",20]]],
+["모짜렐라치즈","달걀·유제품",280,3,22,20,[["1인분",30]]],
+["크림치즈","달걀·유제품",340,4,6,34,[["1큰술",15]]],
+["버터","달걀·유제품",720,0.1,0.9,81,[["1큰술",14]]],
+
+["양배추","채소",25,5,1.3,0.2,[["1인분",100]]],
+["브로콜리","채소",35,6,3,0.4,[["1인분",100]]],
+["시금치","채소",25,3,2.5,0.4,[["1인분",70]]],
+["상추","채소",15,2,1.2,0.2,[["1인분",50]]],
+["깻잎","채소",35,5,3.5,0.7,[["1장",2]]],
+["오이","채소",15,3,0.7,0.1,[["1개",200]]],
+["토마토","채소",20,4,1,0.2,[["1개",200]]],
+["방울토마토","채소",25,5,1,0.2,[["1개",15]]],
+["당근","채소",40,9,0.9,0.2,[["1개",150]]],
+["양파","채소",40,9,1.1,0.1,[["1개",200]]],
+["파프리카","채소",30,6,1,0.2,[["1개",150]]],
+["애호박","채소",20,4,1.2,0.2,[["1개",200]]],
+["가지","채소",25,5,1,0.2,[["1개",100]]],
+["표고버섯","채소",30,5,3,0.4,[["1개",15]]],
+["팽이버섯","채소",35,7,2.5,0.3,[["1봉",100]]],
+["무","채소",20,4,0.7,0.1,[["1인분",100]]],
+["숙주","채소",20,3,2,0.1,[["1인분",100]]],
+["부추","채소",25,4,2.5,0.3,[["1인분",50]]],
+["대파","채소",30,6,1.8,0.2,[["1대",30]]],
+["마늘","채소",130,28,6,0.5,[["1쪽",5]]],
+["단무지","채소",15,3,0.6,0,[["1조각",20]]],
+["피클","채소",20,4,0.5,0.1,[["1개",20]]],
+
+["닭가슴살샐러드","샐러드",70,4,8,2.5,[["1인분",250]]],
+["시저샐러드","샐러드",130,5,5,10,[["1인분",200]]],
+["그릭샐러드","샐러드",90,4,2.5,7,[["1인분",200]]],
+["콥샐러드","샐러드",120,4,7,8,[["1인분",250]]],
+["참치샐러드","샐러드",110,4,9,6,[["1인분",200]]],
+["감자샐러드","샐러드",140,14,2,8,[["1인분",150]]],
+["단호박샐러드","샐러드",90,14,1.5,3,[["1인분",150]]],
+["과일샐러드","샐러드",60,14,0.7,0.3,[["1인분",200]]],
+["양배추샐러드","샐러드",45,6,1,2,[["1인분",150]]],
+["파스타샐러드","샐러드",150,20,4,6,[["1인분",200]]],
+["오리엔탈드레싱","샐러드",300,10,1,27,[["1큰술",15]]],
+["발사믹드레싱","샐러드",150,12,0.5,10,[["1큰술",15]]],
+["시저드레싱","샐러드",450,6,2,46,[["1큰술",15]]],
+["허니머스터드","샐러드",320,25,1,22,[["1큰술",15]]],
+["참깨드레싱","샐러드",400,9,2,38,[["1큰술",15]]],
+
+["사과","과일",55,14,0.3,0.2,[["1개",200]]],
+["바나나","과일",90,23,1.1,0.3,[["1개",100]]],
+["귤","과일",45,11,0.8,0.1,[["1개",60]]],
+["오렌지","과일",45,11,0.9,0.1,[["1개",150]]],
+["딸기","과일",35,8,0.7,0.3,[["1개",15]]],
+["포도","과일",65,17,0.6,0.2,[["1송이",200]]],
+["수박","과일",30,7,0.6,0.1,[["1쪽",200]]],
+["참외","과일",30,7,0.9,0.1,[["1개",200]]],
+["복숭아","과일",40,10,0.5,0.1,[["1개",150]]],
+["자두","과일",45,11,0.5,0.1,[["1개",40]]],
+["배","과일",50,13,0.4,0.1,[["1개",250]]],
+["키위","과일",60,14,1.1,0.5,[["1개",80]]],
+["파인애플","과일",50,13,0.5,0.1,[["1쪽",100]]],
+["망고","과일",60,15,0.8,0.4,[["1개",200]]],
+["블루베리","과일",57,14,0.7,0.3,[["1컵",100]]],
+["아보카도","과일",160,9,2,15,[["1개",150]]],
+["체리","과일",60,15,1,0.2,[["1컵",100]]],
+["석류","과일",70,17,1,0.5,[["1개",200]]],
+["건포도","과일",300,79,3,0.5,[["1큰술",15]]],
+
+["아몬드","견과",580,22,21,50,[["한줌",25]]],
+["호두","견과",650,14,15,65,[["한줌",25]]],
+["땅콩","견과",570,16,26,49,[["한줌",25]]],
+["피스타치오","견과",560,28,20,45,[["한줌",25]]],
+["캐슈넛","견과",550,30,18,44,[["한줌",25]]],
+["치아씨드","견과",490,42,17,31,[["1큰술",12]]],
+["땅콩버터","견과",590,20,25,50,[["1큰술",16]]],
+
+["김밥","간식",170,28,5,4,[["1줄",250]]],
+["삼각김밥","간식",170,32,4,2.5,[["1개",110]]],
+["떡볶이","간식",180,35,4,2.5,[["1인분",250]]],
+["순대","간식",180,25,9,5,[["1인분",150]]],
+["모둠튀김","간식",300,35,6,15,[["1개",40]]],
+["치킨(후라이드)","간식",280,10,25,16,[["1조각",80]]],
+["치킨(양념)","간식",300,18,23,15,[["1조각",80]]],
+["피자","간식",260,30,11,11,[["1조각",100]]],
+["햄버거","간식",250,28,13,10,[["1개",200]]],
+["감자튀김","간식",310,41,3.4,15,[["1봉",100]]],
+["핫도그","간식",290,30,9,15,[["1개",110]]],
+["만두(찐)","간식",200,24,8,7,[["1개",30]]],
+["군만두","간식",250,28,9,12,[["1개",30]]],
+["새우깡","간식",480,65,7,20,[["1봉",90]]],
+["초콜릿","간식",550,55,7,34,[["1조각",10]]],
+["아이스크림","간식",200,24,3.5,10,[["1개",100]]],
+["케이크","간식",350,45,5,17,[["1조각",100]]],
+["그래놀라","간식",450,60,9,18,[["1컵",50]]],
+["시리얼","간식",380,80,7,4,[["1컵",40]]],
+["단백질바","간식",350,30,30,12,[["1개",60]]],
+["젤리","간식",350,80,5,0.1,[["1봉",30]]],
+["팝콘","간식",450,60,8,20,[["1봉",50]]],
+["카라멜","간식",400,80,3,8,[["1개",5]]],
+["감자칩","간식",536,53,6,34,[["1봉",60]]],
+["돈가스","간식",280,20,14,16,[["1장",150]]],
+["탕수육","간식",250,25,10,12,[["1인분",200]]],
+["라볶이","간식",180,35,4,3,[["1인분",400]]],
+["김말이튀김","간식",300,40,4,14,[["1개",40]]],
+["팥빙수","간식",120,25,2,2,[["1그릇",300]]],
+["단팥죽","간식",55,11,1.5,0.5,[["1그릇",300]]],
+["약과","간식",420,60,5,18,[["1개",30]]],
+["식혜","간식",40,10,0.2,0,[["1컵",200]]],
+["수정과","간식",35,9,0.1,0,[["1컵",200]]],
+
+["아메리카노","음료",2,0.3,0.1,0,[["1잔",355]]],
+["카페라떼","음료",50,5,3,2.5,[["1잔",355]]],
+["콜라","음료",42,10.6,0,0,[["1캔",355]]],
+["제로콜라","음료",0,0,0,0,[["1캔",355]]],
+["사이다","음료",40,10,0,0,[["1캔",355]]],
+["오렌지주스","음료",45,10,0.7,0.2,[["1잔",200]]],
+["이온음료","음료",25,6,0,0,[["1병",500]]],
+["맥주","음료",43,3.5,0.5,0,[["1캔",355]]],
+["소주","음료",120,3,0,0,[["1잔",50]]],
+["막걸리","음료",50,6,0.5,0.1,[["1사발",300]]],
+["와인","음료",85,2.6,0.1,0,[["1잔",150]]],
+["위스키","음료",250,0,0,0,[["1샷",30]]],
+
+["식용유","양념·기름",900,0,0,100,[["1큰술",12]]],
+["올리브유","양념·기름",900,0,0,100,[["1큰술",12]]],
+["참기름","양념·기름",900,0,0,100,[["1큰술",12]]],
+["마요네즈","양념·기름",700,1,1,77,[["1큰술",14]]],
+["고추장","양념·기름",230,45,6,2,[["1큰술",20]]],
+["된장","양념·기름",200,25,12,6,[["1큰술",18]]],
+["간장","양념·기름",60,8,6,0,[["1큰술",15]]],
+["설탕","양념·기름",400,100,0,0,[["1큰술",12]]],
+["꿀","양념·기름",300,82,0.3,0,[["1큰술",21]]],
+["케첩","양념·기름",100,26,1,0.2,[["1큰술",15]]],
+["스리라차","양념·기름",90,19,1,0.5,[["1큰술",15]]],
+["굴소스","양념·기름",50,8,5,0,[["1큰술",15]]],
+
+["맥도날드 빅맥","프랜차이즈",251,20.5,11.4,13.2,[["1개",219]]],
+["맥도날드 맥너겟 6조각","프랜차이즈",284,16.8,14.7,16.8,[["6조각",95]]],
+["버거킹 와퍼","프랜차이즈",228,16.9,11.7,13.8,[["1개",290]]],
+["맘스터치 싸이버거","프랜차이즈",268,25,12.3,13.2,[["1개",220]]],
+["롯데리아 불고기버거","프랜차이즈",250,28,10.6,10.6,[["1개",160]]],
+["KFC 징거버거","프랜차이즈",253,25.3,12.6,11.6,[["1개",190]]],
+["서브웨이 이탈리안BMT","프랜차이즈",164,18.8,8,6.4,[["15cm",250]]],
+["교촌 허니콤보","프랜차이즈",260,14,22,14,[["1조각",100],["1마리",800]]],
+["BHC 뿌링클","프랜차이즈",265,15,21,14.5,[["1조각",100],["1마리",900]]],
+["BBQ 황금올리브치킨","프랜차이즈",250,9,23,14.5,[["1조각",100],["1마리",850]]],
+["굽네 고추바사삭","프랜차이즈",190,8,24,7,[["1조각",100],["1마리",800]]],
+["도미노 페퍼로니피자","프랜차이즈",231,24,11,10,[["1조각",130]]],
+["피자헛 슈프림피자","프랜차이즈",225,25,11,9,[["1조각",120]]]
+];
+
+/* ---------------- setup ---------------- */
+const CHO = "ㄱㄲㄴㄷㄸㄹㅁㅂㅃㅅㅆㅇㅈㅉㅊㅋㅌㅍㅎ";
+const JUNG = "ㅏㅐㅑㅒㅓㅔㅕㅖㅗㅘㅙㅚㅛㅜㅝㅞㅟㅠㅡㅢㅣ";
+const JONG = " ㄱㄲㄳㄴㄵㄶㄷㄹㄺㄻㄼㄽㄾㄿㅀㅁㅂㅄㅅㅆㅇㅈㅊㅋㅌㅍㅎ";
+
+const toFood = ([n,g,k,ca,pr,fa,s]) => ({
+  n, g, k, ca, pr, fa,
+  s: (s && s.length) ? s : [["100g",100]]
+});
+
+const LS = {
+  get(k,d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d }catch(e){ return d } },
+  set(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch(e){} }
+};
+
+let customs = LS.get("cd.custom", [])
+  .filter(x => x && x.n && typeof x.k === "number")
+  .map(x => ({ n:x.n, g:x.g || "내 음식", k:x.k, ca:x.ca, pr:x.pr, fa:x.fa,
+               s:(x.s && x.s.length) ? x.s : [["100g",100]] }));
+let foods = RAW.map(toFood).concat(customs);
+let log = loadLog();
+
+let sel = null;        // 선택된 음식
+let selServ = 0;       // 서빙 인덱스
+let results = [];
+let active = -1;
+
+const $ = s => document.querySelector(s);
+const qEl = $("#q"), rowsEl = $("#rows"), detailEl = $("#detail"),
+      hintEl = $("#hint"), clearEl = $("#clear"), panelEl = $("#panel"), atbK = $("#atbK");
+
+/* ---------------- 검색 ---------------- */
+function toJamo(s){
+  let out = "";
+  for (const ch of s){
+    const c = ch.charCodeAt(0);
+    if (c >= 0xAC00 && c <= 0xD7A3){
+      const i = c - 0xAC00;
+      out += CHO[Math.floor(i/588)];
+      out += JUNG[Math.floor((i%588)/28)];
+      const t = i % 28;
+      if (t) out += JONG[t];
+    } else out += ch;
+  }
+  return out;
+}
+function choseong(s){
+  let out = "";
+  for (const ch of s){
+    const c = ch.charCodeAt(0);
+    out += (c >= 0xAC00 && c <= 0xD7A3) ? CHO[Math.floor((c-0xAC00)/588)] : ch;
+  }
+  return out;
+}
+const isJamo = q => /^[ㄱ-ㅎ]+$/.test(q);
+
+function score(f, q, toks){
+  const name = norm(f.n.replace(/\s+/g,""));
+  if (name === q) return 100;
+  // 괄호 앞이 이름과 똑같으면 대표 메뉴 (예: "계란" → 계란(삶은)이 계란국보다 먼저)
+  if (name.split("(")[0] === q) return 95;
+  if (name.startsWith(q)) return 90;
+  if (name.includes(q)) return 70;
+  // 띄어쓰기 순서 무관 (예: "삶은 닭가슴살" → 닭가슴살(삶은))
+  if (toks && toks.length > 1 && toks.every(t => name.includes(t))) return 65;
+  // 분류명을 그대로 입력한 경우 (김치, 과일, 반찬 …) → 그 분류 전체
+  if (f.g.replace(/·/g,"") === q) return 25;
+  if (isJamo(q)){
+    const cs = choseong(name);
+    if (cs === q) return 66;
+    if (cs.startsWith(q)) return 60;
+    if (cs.includes(q)) return 40;
+    return -1;
+  }
+  const nj = toJamo(name), qj = toJamo(q);
+  if (nj.startsWith(qj)) return 55;
+  if (nj.includes(qj)) return 35;
+  return -1;
+}
+
+let groupMode = false;   // 이름이 아니라 분류명으로 찾은 경우
+
+function search(q){
+  const raw = norm(q.trim());
+  const nq = raw.replace(/\s+/g,"");
+  const toks = raw.split(/\s+/).filter(Boolean);
+  groupMode = false;
+  if (!nq) return foods.slice();
+  const scored = [];
+  foods.forEach((f,i) => {
+    const s = score(f, nq, toks);
+    if (s > 0) scored.push([s, i, f]);
+  });
+  // 이름에서 못 찾으면 분류명으로 (예: "채소", "음료", "유제품")
+  if (!scored.length){
+    groupMode = true;
+    foods.forEach((f,i) => {
+      if (f.g.replace(/·/g,"").includes(nq)) scored.push([18, i, f]);
+    });
+    scored.sort((a,b) => a[1]-b[1]);
+  } else {
+    scored.sort((a,b) => b[0]-a[0] || a[1]-b[1]);
+  }
+  return scored.map(x => x[2]);
+}
+
+/* ---------------- 렌더 ---------------- */
+const r1 = x => (Math.round(x*10)/10).toString();
+const num = x => Math.round(x).toLocaleString("ko-KR");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+// 국·찌개와 샐러드는 같은 100g이라도 담긴 양에 따라 크게 달라져서 따로 안내
+const NOTE = {
+  "국·찌개": "🍲 국물까지 포함한 기준이에요. 국물을 남기면 칼로리·나트륨이 확 줄어요.",
+  "샐러드": "🥗 드레싱 양에 따라 ±100kcal 차이가 나요. 드레싱은 따로 더해주세요.",
+  "프랜차이즈": "🍔 대표 메뉴 1개 기준 근사치예요. 사이즈·세트 여부·조리법에 따라 차이가 커요."
+};
+
+// 자주 틀리거나 다르게 부르는 말 보정
+const SYN = [
+  ["오뎅", "어묵"],       // 오뎅 → 어묵
+  ["칼치", "갈치"],       // 칼치속젓 → 갈치속젓
+  ["간장개장", "간장게장"],   // '개장'은 육개장을 건드리지 않게 앞말까지 지정
+  ["양념개장", "양념게장"],
+  ["자장면", "짜장면"],
+  ["삶은계란", "계란"],   // 삶은계란 → 계란
+  ["삶은달걀", "계란"],
+  ["달걀", "계란"],
+  ["요구르트", "요거트"],
+  ["떡복이", "떡볶이"],
+  ["떡볶기", "떡볶이"],
+  ["라멘", "라면"],
+  ["쏘주", "소주"]
+];
+const norm = s => {
+  let t = s.replace(/찌게|찌계/g, "찌개");
+  for (const [a, b] of SYN) if (t.indexOf(a) >= 0) t = t.split(a).join(b);
+  return t;
+};
+
+function hl(name, q){
+  const nq = q.trim().replace(/\s+/g,"");
+  if (!nq) return esc(name);
+  const i = name.replace(/\s+/g,"").indexOf(nq);
+  if (i < 0) return esc(name);
+  // 공백 무시 인덱스를 원문 인덱스로 변환
+  let raw = 0, cnt = 0;
+  while (raw < name.length && cnt < i){ if (!/\s/.test(name[raw])) cnt++; raw++; }
+  let end = raw, c2 = 0;
+  while (end < name.length && c2 < nq.length){ if (!/\s/.test(name[end])) c2++; end++; }
+  return esc(name.slice(0,raw)) + "<em>" + esc(name.slice(raw,end)) + "</em>" + esc(name.slice(end));
+}
+
+function renderList(){
+  const q = qEl.value;
+  results = search(q);
+  active = -1;
+
+  if (!results.length){
+    rowsEl.innerHTML = '<div class="none">검색 결과가 없어요.<br><b>다른 이름</b>으로 찾거나 <b>+ 내 음식 직접 추가</b>를 눌러보세요.</div>';
+    hintEl.innerHTML = q.trim() ? `"${esc(q.trim())}" · 결과 0개` : "";
+    return;
+  }
+  hintEl.innerHTML = q.trim()
+    ? `"${esc(q.trim())}" · ${groupMode ? "분류 " : ""}<b>${results.length}개</b>`
+    : `이름 일부만 쳐도 돼요 · 초성(ㄷㅂ)도 OK`;
+
+  rowsEl.innerHTML = results.map((f,i) => `
+    <li>
+      <button class="row${sel && sel.n===f.n ? " on" : ""}" data-i="${i}">
+        <span class="left">
+          <span class="nm">${hl(f.n,q)}</span>
+          <span class="meta"><span class="tag">${esc(f.g)}</span>
+            <span>탄 ${r1(f.ca)} · 단 ${r1(f.pr)} · 지 ${r1(f.fa)}</span></span>
+        </span>
+        <span class="kcal"><b>${num(f.k)}</b><i>kcal</i></span>
+      </button>
+    </li>`).join("");
+}
+
+function renderDetail(){
+  detailEl.classList.toggle("has", !!sel);
+  if (!sel){
+    detailEl.innerHTML = `<div class="card"><div class="empty">
+      <span class="big">🍽️</span>
+      위에 <b>두부</b>, <b>닭가슴살</b>처럼 입력하면<br>칼로리와 탄단지가 바로 나와요.
+    </div></div>`;
+    return;
+  }
+  const f = sel;
+  const [label, g] = f.s[selServ] || f.s[0];
+  const m = g/100;
+  const k = f.k*m, ca = f.ca*m, pr = f.pr*m, fa = f.fa*m;
+  const kcalC = ca*4, kcalP = pr*4, kcalF = fa*9;
+  const macroK = kcalC + kcalP + kcalF;        // 제공량 기준 탄단지 열량
+  const macro100 = f.ca*4 + f.pr*4 + f.fa*9;   // 100g 기준 (안내문 판단용)
+  const isAlc = f.k - macro100 > 20;           // 술: 알코올 열량은 탄단지에 없음
+  const isFiber = macro100 - f.k > 40;         // 김·미역: 식이섬유는 열량으로 안 침
+  const tot = (isAlc ? k : macroK) || 1;
+  const pc = x => Math.max(0, Math.round(x/tot*100));
+  const bar = (v,color) => `<div class="track"><i style="width:${Math.max(v,1.5)}%;background:${color}"></i></div>`;
+
+  detailEl.innerHTML = `<div class="card">
+    <span class="tagline">${esc(f.g)}</span>
+    <h2 class="food">${esc(f.n)}</h2>
+    <div class="servs">${f.s.map((s,i) =>
+      `<button class="serv${i===selServ?" on":""}" data-s="${i}">${s[0]} · ${s[1]}g</button>`).join("")}</div>
+    <div class="hero"><span class="num">${num(k)}</span><span class="unit">kcal</span></div>
+    <div class="sub">${label} ${g}g 기준</div>
+    <div class="mrows">
+      <div class="mrow"><span class="lab" style="color:var(--carb)">탄수화물</span><span class="val">${r1(ca)}g</span>${bar(pc(kcalC),"var(--carb)")}<span class="pct">${pc(kcalC)}%</span></div>
+      <div class="mrow"><span class="lab" style="color:var(--prot)">단백질</span><span class="val">${r1(pr)}g</span>${bar(pc(kcalP),"var(--prot)")}<span class="pct">${pc(kcalP)}%</span></div>
+      <div class="mrow"><span class="lab" style="color:var(--fat)">지방</span><span class="val">${r1(fa)}g</span>${bar(pc(kcalF),"var(--fat)")}<span class="pct">${pc(kcalF)}%</span></div>
+    </div>
+    <div class="per100">100g당 ${num(f.k)}kcal · 탄 ${r1(f.ca)}g · 단 ${r1(f.pr)}g · 지 ${r1(f.fa)}g</div>
+    ${NOTE[f.g] ? `<div class="tip">${NOTE[f.g]}</div>` : ""}
+    ${isAlc ? `<div class="tip">🍺 알코올 열량이라 탄단지 합과 달라요 · 100g 칼로리의 약 ${Math.round((f.k-macro100)/f.k*100)}%가 알코올</div>` : ""}
+    ${isFiber ? `<div class="tip">🌿 식이섬유가 많아 탄단지 합보다 칼로리가 낮아요 (탄수화물에 식이섬유 포함)</div>` : ""}
+    <button class="addbtn" id="addLog">+ 오늘 먹은 것에 추가</button>
+  </div>`;
+}
+
+function pick(f, noScroll){
+  sel = f; selServ = 0;
+  renderDetail();
+  renderList();
+  if (!noScroll && matchMedia("(max-width: 879px)").matches){
+    detailEl.scrollIntoView({behavior:"smooth", block:"start"});
+  }
+}
+
+/* ---------------- 오늘 기록 ---------------- */
+function today(){ return new Date().toLocaleDateString("sv-SE"); }
+
+function loadLog(){
+  const d = LS.get("cd.log", null);
+  if (!d || d.date !== today()) return { date: today(), items: [] };
+  return d;
+}
+function saveLog(){ LS.set("cd.log", log); }
+function logTotal(){
+  return log.items.reduce((a,i) => ({
+    k:a.k+i.k, ca:a.ca+i.ca, pr:a.pr+i.pr, fa:a.fa+i.fa
+  }), {k:0,ca:0,pr:0,fa:0});
+}
+function renderAtb(){
+  atbK.textContent = num(logTotal().k);
+  if (!panelEl.hidden) renderPanel();
+}
+function renderPanel(){
+  const t = logTotal();
+  panelEl.innerHTML = `<h3>오늘 먹은 것 <button id="rst">전체 삭제</button></h3>
+    ${log.items.length
+      ? `<ul class="plist">${log.items.map((i,x) =>
+          `<li><span>${esc(i.n)} <small style="color:#5f6c7d">${esc(i.label)} ${i.g}g</small></span>
+           <span>${num(i.k)} kcal <button data-del="${x}" style="background:none;border:0;color:#5f6c7d;padding:0 0 0 6px">✕</button></span></li>`).join("")}</ul>`
+      : `<div style="color:#7d8b9c;font-size:12.5px;padding:6px 0 14px">아직 기록이 없어요. 검색해서 추가해 보세요.</div>`}
+    <div class="tot">
+      <div><b>${num(t.k)}</b><span>kcal</span></div>
+      <div><b style="color:var(--carb)">${r1(t.ca)}</b><span>탄수 g</span></div>
+      <div><b style="color:var(--prot)">${r1(t.pr)}</b><span>단백 g</span></div>
+      <div><b style="color:var(--fat)">${r1(t.fa)}</b><span>지방 g</span></div>
+    </div>`;
+}
+
+/* ---------------- 이벤트 ---------------- */
+let t = null;
+qEl.addEventListener("input", () => {
+  clearEl.classList.toggle("on", !!qEl.value);
+  clearTimeout(t);
+  t = setTimeout(renderList, 30);
+});
+
+clearEl.addEventListener("click", () => {
+  qEl.value = ""; clearEl.classList.remove("on");
+  renderList(); qEl.focus();
+});
+
+qEl.addEventListener("keydown", e => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp"){
+    e.preventDefault();
+    if (!results.length) return;
+    const max = results.length;
+    active = e.key === "ArrowDown"
+      ? (active + 1) % max
+      : (active - 1 + max) % max;
+    [...rowsEl.querySelectorAll(".row")].forEach((el,i) => el.classList.toggle("on", i === active));
+    const el = rowsEl.querySelectorAll(".row")[active];
+    if (el) el.scrollIntoView({block:"nearest"});
+  } else if (e.key === "Enter"){
+    e.preventDefault();
+    const f = results[active >= 0 ? active : 0];
+    if (f) pick(f);
+  } else if (e.key === "Escape"){
+    qEl.value = ""; clearEl.classList.remove("on"); renderList();
+  }
+});
+
+rowsEl.addEventListener("click", e => {
+  const btn = e.target.closest(".row");
+  if (!btn) return;
+  const f = results[+btn.dataset.i];
+  if (f) pick(f);
+});
+
+detailEl.addEventListener("click", e => {
+  const s = e.target.closest(".serv");
+  if (s){ selServ = +s.dataset.s; renderDetail(); return; }
+  if (e.target.id === "addLog" && sel){
+    const [label, g] = sel.s[selServ] || sel.s[0];
+    const m = g/100;
+    log.items.push({
+      n: sel.n, label, g,
+      k: sel.k*m, ca: sel.ca*m, pr: sel.pr*m, fa: sel.fa*m
+    });
+    saveLog(); renderAtb();
+    const b = $("#addLog");
+    if (b){ b.textContent = "✓ 추가됨"; b.style.background = "#2b3a30"; b.style.color = "var(--accent)";
+      setTimeout(() => { if (b.isConnected){ b.textContent = "+ 오늘 먹은 것에 추가"; b.style.background=""; b.style.color=""; } }, 900); }
+  }
+});
+
+$("#atb").addEventListener("click", () => {
+  panelEl.hidden = !panelEl.hidden;
+  if (!panelEl.hidden) renderPanel();
+});
+
+panelEl.addEventListener("click", e => {
+  if (e.target.id === "rst"){ log = { date: today(), items: [] }; saveLog(); renderAtb(); renderPanel(); return; }
+  const d = e.target.dataset && e.target.dataset.del;
+  if (d != null){ log.items.splice(+d,1); saveLog(); renderAtb(); renderPanel(); }
+});
+
+document.addEventListener("click", e => {
+  if (!panelEl.hidden && !e.target.closest("#panel") && !e.target.closest("#atb")) panelEl.hidden = true;
+});
+
+/* 내 음식 추가 */
+const dlg = $("#dlg");
+$("#openAdd").addEventListener("click", () => dlg.showModal());
+$("#cancelAdd").addEventListener("click", () => dlg.close());
+dlg.addEventListener("click", e => { if (e.target === dlg) dlg.close(); });
+$("#addForm").addEventListener("submit", e => {
+  const f = {
+    n: $("#fn").value.trim(), g: "내 음식",
+    k: +$("#fk").value, ca: +$("#fc").value, pr: +$("#fp").value, fa: +$("#ff").value,
+    s: [["100g",100]]
+  };
+  if (!f.n) return;
+  customs.push(f);
+  LS.set("cd.custom", customs);
+  foods = RAW.map(toFood).concat(customs);
+  $("#addForm").reset();
+  qEl.value = f.n; clearEl.classList.add("on");
+  renderList();
+  const hit = results.find(x => x.n === f.n);
+  if (hit) pick(hit);
+});
+
+/* sticky header shadow */
+addEventListener("scroll", () => {
+  $("#hd").classList.toggle("stuck", scrollY > 4);
+}, {passive:true});
+
+/* init */
+let hashQ = "";
+try { hashQ = decodeURIComponent((location.hash || "").slice(1)).trim(); } catch(e){ hashQ = ""; }
+if (hashQ){ qEl.value = hashQ; clearEl.classList.add("on"); }
+renderList();
+renderDetail();
+renderAtb();
+if (hashQ){
+  const hit = foods.find(x => x.n === hashQ);
+  if (hit) pick(hit, true);
+}
+if (innerWidth >= 880 && !hashQ) qEl.focus();
+</script>
+</body>
+</html>
